@@ -10,7 +10,7 @@ module Slack
 
     # these act as defaults
     # if they are set
-    attr_accessor :channel, :username
+    attr_accessor :channel, :username, :mrkdwn
 
     attr_reader :team, :token, :hook_name
 
@@ -24,7 +24,22 @@ module Slack
       message = LinkFormatter.format(message)
       payload = { text: message }.merge(default_payload).merge(options)
 
-      HTTPPost.to endpoint, payload: payload.to_json
+      HTTParty.post(endpoint, :body => {payload: payload.to_json})
+    end
+
+    def valid_token?
+      r = HTTParty.get(endpoint)
+      # debugger
+      r.code == 200
+    end
+
+    def valid_channel? options={}
+      channel = default_payload.merge(options)[:channel]
+      raise "channel is required" unless channel
+
+      r = HTTParty.post(endpoint, :body => {channels: channel})
+      # debugger
+      r.code == 202
     end
 
     def channel= channel
@@ -45,11 +60,12 @@ module Slack
         payload = {}
         payload[:channel]  = channel  if channel
         payload[:username] = username if username
+        payload[:mrkdwn] = mrkdwn if mrkdwn
         payload
       end
 
       def endpoint
-        URI.parse "https://#{team}.slack.com/services/hooks/#{hook_name}?token=#{token}"
+        "https://#{team}.slack.com/services/hooks/#{hook_name}?token=#{token}"
       end
 
   end
